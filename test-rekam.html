@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Rekaman Sederhana</title>
+</head>
+<body>
+    <h2>🎤 Test Rekaman Suara</h2>
+    
+    <button onclick="mulaiRekam()">🎙️ Mulai Rekam</button>
+    <button onclick="stopRekam()" disabled id="stopBtn">⏹️ Stop</button>
+    <button onclick="playRekaman()" disabled id="playBtn">▶️ Putar</button>
+    
+    <audio id="audioPlayer" controls style="width:100%; margin-top:20px; display:none;"></audio>
+    
+    <div id="status" style="margin-top:20px; padding:10px; border:1px solid #ccc;"></div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioStream = null;
+
+        async function mulaiRekam() {
+            try {
+                document.getElementById('status').innerHTML = '⏳ Meminta izin mikrofon...';
+                
+                // Minta izin mikrofon
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                document.getElementById('status').innerHTML = '✅ Izin diberikan, mulai merekam...';
+                
+                // Buat MediaRecorder
+                mediaRecorder = new MediaRecorder(audioStream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    const audioPlayer = document.getElementById('audioPlayer');
+                    audioPlayer.src = audioUrl;
+                    audioPlayer.style.display = 'block';
+                    
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('status').innerHTML = '✅ Rekaman selesai! Klik "Putar" untuk mendengar.';
+                    
+                    // Hentikan semua track mikrofon
+                    audioStream.getTracks().forEach(track => track.stop());
+                };
+                
+                // Mulai rekam
+                mediaRecorder.start();
+                
+                // Update UI
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('status').innerHTML = '🔴 Merekam... bicara sekarang';
+                
+            } catch (err) {
+                console.error('Error:', err);
+                document.getElementById('status').innerHTML = '❌ Error: ' + err.message;
+                
+                if (err.name === 'NotAllowedError') {
+                    alert('IZIN MIKROFON DITOLAK! Klik ikon gembok di address bar dan izinkan mikrofon.');
+                } else if (err.name === 'NotFoundError') {
+                    alert('TIDAK ADA MIKROFON! Hubungkan mikrofon terlebih dahulu.');
+                } else {
+                    alert('Error: ' + err.message);
+                }
+            }
+        }
+
+        function stopRekam() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('status').innerHTML = '⏹️ Rekaman dihentikan, memproses...';
+            }
+        }
+
+        function playRekaman() {
+            document.getElementById('audioPlayer').play();
+        }
+    </script>
+</body>
+</html>
